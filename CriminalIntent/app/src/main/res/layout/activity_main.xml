@@ -9,3 +9,4 @@
     tools:context=".MainActivity"
     tools:layout="@layout/fragment_crime"
  />
+    <!--    android:name="com.example.criminalintent.CrimeListFragment"-->

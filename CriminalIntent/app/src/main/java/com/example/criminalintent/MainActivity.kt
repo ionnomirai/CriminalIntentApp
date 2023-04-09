@@ -11,7 +11,7 @@ class MainActivity : AppCompatActivity() {
         //if fragment exist in the list of fragment, than do nothing, otherwise create and add fragment
         val currentFragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
         if(currentFragment == null){
-            val fragment = CrimeDetailFragment()
+            val fragment = CrimeListFragment()
             supportFragmentManager
                 .beginTransaction()
                 .add(R.id.fragment_container, fragment)
