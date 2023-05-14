@@ -51,24 +51,9 @@ class CrimeListFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED){
-                Log.d(TAG, "coroutine started")
-                val crimes = crimeListViewModel.loadCrime()
-                binding.crimeRecyclerView.adapter = CrimeListAdapter(crimes)
-                Log.d(TAG, "coroutine ended")
-
-                //моя реализация - рабочая - потом удалить (а 54-57 закоментировать)
-                //в во viewModels наоборот раскоментировать закоментированное, и наоборот закоментировать
-                //то что аналогичный код
-/*                Log.d(TAG, "coroutine started")
-                binding.crimeRecyclerView.adapter = if (crimeListViewModel.crimes.size > 0){
-                    Log.d(TAG, "crimes used ${crimeListViewModel.crimes.size}")
-                    CrimeListAdapter(crimeListViewModel.crimes)
-                } else {
-                    Log.d(TAG, "crimes load")
-                    crimeListViewModel.crimes += crimeListViewModel.loadCrime()
-                    CrimeListAdapter(crimeListViewModel.crimes)
+                crimeListViewModel.crimes.collect{crimes ->
+                    binding.crimeRecyclerView.adapter = CrimeListAdapter(crimes)
                 }
-                Log.d(TAG, "coroutine ended")*/
             }
         }
     }

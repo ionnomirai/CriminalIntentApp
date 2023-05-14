@@ -4,39 +4,34 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.*
 
 const val VIEW_MODEL_TAG = "View_Model"
 class CrimeListViewModel : ViewModel() {
-    val crimes = mutableListOf<Crime>()
-
+    // get a link to an object of CrimeRepositary (Singleton)
     private val crimeRepository = CrimeRepository.get()
 
-/*    init {
-        Log.d(VIEW_MODEL_TAG, "init starting")
+    // Starage in ViewModel for data from database.
+    private val _crimes: MutableStateFlow<List<Crime>> = MutableStateFlow(emptyList())
+
+    /* This is public access to a MutableStateFlow, but only for read.
+       When we call "crimes" we are redirection to the "private _crimes" (read). This _crimes
+       it is a storage for data from database, and it is constantly filled data from DB (init block).
+       Even more, when we rotate the screen, viewmodel save this staroage, as opposed to simple Flow.
+    */
+    val crimes: StateFlow<List<Crime>>
+        get() = _crimes.asStateFlow()
+
+    init {
         viewModelScope.launch {
-            Log.d(VIEW_MODEL_TAG, "coroutine launched")
-
-            crimes += loadCrime()
-
-            Log.d(VIEW_MODEL_TAG, "Loading crimes finished")
+            crimeRepository.getCrimes().collect{
+                _crimes.value = it
+            }
         }
-    }*/
-
-     suspend fun loadCrime() : List<Crime>{
-/*        val result = mutableListOf<Crime>()
-         delay(4000L)
-        for (i in 0 until 100) {
-            val crime = Crime(
-                id = UUID.randomUUID(),
-                title = "Crime #$i",
-                date = Date(),
-                isSolved = i % 2 == 0
-            )
-            result.add(crime)
-        }
-        return result*/
-         return crimeRepository.getCrimes()
     }
 }
