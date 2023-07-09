@@ -1,4 +1,4 @@
-package com.example.criminalintent
+package com.example.criminalintent.fragments
 
 import android.os.Bundle
 import android.util.Log
@@ -7,13 +7,20 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.navArgs
+import com.example.criminalintent.database.Crime
 import com.example.criminalintent.databinding.FragmentCrimeBinding
 import java.util.*
+
+private const val TAG = "CrimeDetailFragment_TAG"
 
 class CrimeDetailFragment : Fragment(){
     private lateinit var crime: Crime
 
-    /* */
+    /* Variable that holds any data that come here from another fragments
+    *  (in our case, it is UUID from CrimeListFragment*/
+    private val argsMy : CrimeDetailFragmentArgs by navArgs()
+
     private var _binding: FragmentCrimeBinding? = null //instance of the layout
     //checkNotNull(value) if value equals null -> than throe exception, otherwise return value
     private val binding
@@ -71,6 +78,8 @@ class CrimeDetailFragment : Fragment(){
                 crime = crime.copy(isSolved = isChecked)
             }
         }
+
+        Log.d(TAG, "arguments from another fragments: ${argsMy.crimeId}")
 
     }
 
