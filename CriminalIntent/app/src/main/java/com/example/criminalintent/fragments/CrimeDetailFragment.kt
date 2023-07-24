@@ -5,17 +5,33 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.viewModelScope
+import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.example.criminalintent.database.Crime
 import com.example.criminalintent.databinding.FragmentCrimeBinding
+import com.example.criminalintent.viewModel.CrimeDetailViewModel
+import com.example.criminalintent.viewModel.CrimeDetailViewModelFactory
+import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import java.util.*
 
 private const val TAG = "CrimeDetailFragment_TAG"
 
 class CrimeDetailFragment : Fragment(){
-    private lateinit var crime: Crime
 
     /* Variable that holds any data that come here from another fragments
     *  (in our case, it is UUID from CrimeListFragment*/
@@ -28,16 +44,13 @@ class CrimeDetailFragment : Fragment(){
             "Cannot accesss binding because it is null. Is the view visible?"
         }
 
+    private val viewModelDetails : CrimeDetailViewModel by viewModels{
+        CrimeDetailViewModelFactory(argsMy.crimeId)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d("Fragment", "onCreateFragment")
-        crime = Crime(
-            id = UUID.randomUUID(),
-            title = "",
-            date = Date(),
-            isSolved = false
-        )
-        Log.d("Fragment", "Crime id: ${crime.id}")
+        Log.d(TAG, "onCreate")
     }
 
     //in that function we create instance of the layout and poss it to the host
@@ -46,7 +59,7 @@ class CrimeDetailFragment : Fragment(){
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        Log.d("Fragment", "onCreateView")
+        Log.d(TAG, "onCreateView")
         //layoutInflater it is equals getLayoutInflater
         //question! Can we call inflater instead getLayoutInflater?
         //purpose: create an instance of the layout
@@ -57,25 +70,58 @@ class CrimeDetailFragment : Fragment(){
     //in that function we initialise variables and setting listeners
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        Log.d("Fragment", "onViewCreated")
+        Log.d(TAG, "onViewCreated")
+
+        //Log.d(TAG, "${viewModelDetails.crime.value?.id}")
+
         binding.apply {
+
+
+            val callbackAction2 = object : OnBackPressedCallback(true){
+                override fun handleOnBackPressed() {
+                    Log.d(TAG, "custom back press")
+                    if(etCrimeTitle.text.toString().isEmpty()){
+                        //Toast.makeText(activity, "You press BACK version 2", Toast.LENGTH_SHORT).show()
+                        Snackbar.make(root, "The title can not be empty", Snackbar.LENGTH_LONG).show()
+                    }
+                    else{
+                        findNavController().navigate(
+                            CrimeDetailFragmentDirections.actionCrimeDetailFragmentToNavGraph()
+                        )
+                    }
+                }
+            }
+            requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, callbackAction2)
+
+
             /*it is filling the title field in crime object, at the same time that the user enters
             this information into EditText* field*/
             etCrimeTitle.doOnTextChanged { text, _, _, _ ->
-                crime = crime.copy(title = text.toString())
+                viewModelDetails.updateCrime {oldCrime ->
+                    oldCrime.copy(title = text.toString()) // it is equals like "return oldCrime.copy..."
+                }
             }
 
             /*temporary blocked. General sense it is to set a text into the button like today date,
             and set this information to the same field in the crime obj. It is will be reflect
             when we added this crime */
             bCrimeDate.apply {
-                text = crime.date.toString()
                 isEnabled = false
             }
 
-            /**/
             cbCrimeSolved.setOnCheckedChangeListener { _, isChecked ->
-                crime = crime.copy(isSolved = isChecked)
+                viewModelDetails.updateCrime { oldCrime ->
+                    oldCrime.copy(isSolved = isChecked) // it is equals like "return oldCrime.copy..."
+                }
+            }
+        }
+
+        // updating data on the screen
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED){
+                viewModelDetails.crime.collect{crime ->
+                    crime?.let {updateUI(it)}
+                }
             }
         }
 
@@ -83,9 +129,45 @@ class CrimeDetailFragment : Fragment(){
 
     }
 
+    // Function that check (according with DB), do these UI fields need change or not --> and update them
+    private fun updateUI(crime: Crime){
+        binding.apply {
+            if(etCrimeTitle.text.toString() != crime.title){
+                etCrimeTitle.setText(crime.title)
+            }
+            bCrimeDate.text = crime.date.toString()
+            cbCrimeSolved.isChecked = crime.isSolved
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        Log.d(TAG, "onStart")
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.d(TAG, "onResume")
+    }
+
+    override fun onPause() {
+        super.onPause()
+        Log.d(TAG, "onPause")
+    }
+
+    override fun onStop() {
+        super.onStop()
+        Log.d(TAG, "onStop")
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-        Log.d("Fragment", "onDestroyView")
+        Log.d(TAG, "onDestroyView")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d(TAG, "called onDestroy")
     }
 }
