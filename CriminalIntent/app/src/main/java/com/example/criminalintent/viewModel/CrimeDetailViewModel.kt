@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.criminalintent.database.Crime
 import com.example.criminalintent.repository.CrimeRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,7 +45,16 @@ class CrimeDetailViewModel(crimeId: UUID) : ViewModel() {
         super.onCleared()
         //if value != null, then we updateCrime (as current value)
         crime.value?.let { repository.updateCrime(it) } // it - it is value
+
+        // it is my alternariv way, how avoid using GlobalScope
+        /*        CoroutineScope(Dispatchers.IO).launch {
+            crime.value?.let { repository.updateCrimeTest(it) }
+        }*/
+        Log.d(TAG, "onCleared")
     }
+
+    // it is my alternariv way, how avoid using GlobalScope
+    //suspend fun updateCrimeTest(crime: Crime) = repository.updateCrimeTest(crime)
 }
 
 class CrimeDetailViewModelFactory(

@@ -25,5 +25,27 @@
         <action
             android:id="@+id/action_crimeDetailFragment_to_nav_graph"
             app:popUpTo="@id/crimeListFragment" />
+        <action
+            android:id="@+id/select_date"
+            app:destination="@id/datePickerFragment" />
+        <action
+            android:id="@+id/select_time"
+            app:destination="@id/timePickerFragment" />
     </fragment>
+    <dialog
+        android:id="@+id/datePickerFragment"
+        android:name="com.example.criminalintent.fragments.DatePickerFragment"
+        android:label="DatePickerFragment" >
+        <argument
+            android:name="crimeDate"
+            app:argType="java.util.Date" />
+    </dialog>
+    <dialog
+        android:id="@+id/timePickerFragment"
+        android:name="com.example.criminalintent.fragments.TimePickerFragment"
+        android:label="TimePickerFragment" >
+        <argument
+            android:name="crimeTime"
+            app:argType="java.util.Date" />
+    </dialog>
 </navigation>

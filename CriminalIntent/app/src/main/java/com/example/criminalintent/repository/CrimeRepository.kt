@@ -37,6 +37,11 @@ class CrimeRepository private constructor(
         }
     }
 
+    // it is my alternariv way, how avoid using GlobalScope
+    suspend fun updateCrimeTest(crime: Crime){
+        database.crimeDao().updateCrime(crime)
+    }
+
     companion object {
         private var INSTANCE: CrimeRepository? = null
 
