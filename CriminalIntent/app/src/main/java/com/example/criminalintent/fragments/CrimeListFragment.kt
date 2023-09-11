@@ -3,8 +3,14 @@ package com.example.criminalintent.fragments
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
+import androidx.core.view.MenuHost
+import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -52,6 +58,30 @@ class CrimeListFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         Log.d(TAG, "onViewCreated")
 
+        // link on the activity like a host - for more shorter call
+        val menuHost: MenuHost = requireActivity()
+
+        // implements of menu interface - this object PROVIDE creating menu
+        val menuProvider = object : MenuProvider{
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                menuInflater.inflate(R.menu.fragment_crime_list, menu)
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                when(menuItem.itemId){
+                    R.id.new_crime -> {
+                        Toast.makeText(requireContext(), "Add", Toast.LENGTH_SHORT).show()
+                        return true
+                    }
+                }
+                return false
+            }
+        }
+
+        // let the activity handle the menu in this fragment
+        // -- viewLifecycleOwner controls the creation and destruction menu for this fragment.
+        menuHost.addMenuProvider(menuProvider, viewLifecycleOwner)
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 crimeListViewModel.crimes.collect { crimes ->
@@ -68,7 +98,6 @@ class CrimeListFragment : Fragment() {
             }
         }
     }
-
     override fun onStart() {
         super.onStart()
         Log.d(TAG, "onStart")
