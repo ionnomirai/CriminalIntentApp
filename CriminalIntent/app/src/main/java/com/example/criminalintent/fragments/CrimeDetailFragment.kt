@@ -5,10 +5,15 @@ import android.os.Bundle
 import android.provider.CalendarContract.CalendarEntity
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.core.view.MenuHost
+import androidx.core.view.MenuProvider
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
@@ -19,6 +24,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.example.criminalintent.R
 import com.example.criminalintent.database.Crime
 import com.example.criminalintent.databinding.FragmentCrimeBinding
 import com.example.criminalintent.viewModel.CrimeDetailViewModel
@@ -54,6 +60,25 @@ class CrimeDetailFragment : Fragment() {
         CrimeDetailViewModelFactory(argsMy.crimeId)
     }
 
+    private val menuProvider = object : MenuProvider{
+        override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+            menuInflater.inflate(R.menu.fragment_crime_edit, menu)
+        }
+
+        override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+            when(menuItem.itemId){
+                R.id.icDelete -> {
+                    viewLifecycleOwner.lifecycleScope.launch{
+                        currentCrime?.let { viewModelDetails.deleteCrime(it) }
+                        findNavController().navigate(CrimeDetailFragmentDirections.actionCrimeDetailFragmentToNavGraph())
+                    }
+                    return true
+                }
+                else -> return false
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate")
@@ -79,6 +104,10 @@ class CrimeDetailFragment : Fragment() {
         Log.d(TAG, "onViewCreated")
 
         //Log.d(TAG, "${viewModelDetails.crime.value?.id}")
+
+        // added action in app bar
+        val menuHost : MenuHost = requireActivity()
+        menuHost.addMenuProvider(menuProvider, viewLifecycleOwner)
 
         binding.apply {
 
