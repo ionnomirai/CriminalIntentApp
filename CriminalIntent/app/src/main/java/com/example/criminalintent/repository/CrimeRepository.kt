@@ -26,7 +26,6 @@ class CrimeRepository private constructor(
             CrimeDatabase::class.java,
             DATABASE_NAME
         )
-        .createFromAsset(DATABASE_NAME)
         .build()
 
     fun getCrimes(): Flow<List<Crime>> = database.crimeDao().getCrimes()
@@ -40,6 +39,11 @@ class CrimeRepository private constructor(
     // it is my alternariv way, how avoid using GlobalScope
     suspend fun updateCrimeTest(crime: Crime){
         database.crimeDao().updateCrime(crime)
+    }
+
+    // add a crime to database
+    suspend fun addCrime(crime: Crime){
+        database.crimeDao().addCrime(crime)
     }
 
     companion object {

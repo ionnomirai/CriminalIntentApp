@@ -25,6 +25,10 @@ class CrimeListViewModel : ViewModel() {
     val crimes: StateFlow<List<Crime>>
         get() = _crimes.asStateFlow()
 
+    suspend fun addCrime(crime: Crime){
+        crimeRepository.addCrime(crime)
+    }
+
     init {
         viewModelScope.launch {
             crimeRepository.getCrimes().collect{

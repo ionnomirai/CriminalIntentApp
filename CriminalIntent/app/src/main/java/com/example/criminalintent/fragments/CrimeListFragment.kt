@@ -20,10 +20,12 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.criminalintent.R
 import com.example.criminalintent.adapter.CrimeListAdapter
+import com.example.criminalintent.database.Crime
 import com.example.criminalintent.viewModel.CrimeListViewModel
 import com.example.criminalintent.databinding.FragmentCrimeListBinding
 import kotlinx.coroutines.launch
-import java.util.Calendar
+import java.util.Date
+import java.util.UUID
 
 
 class CrimeListFragment : Fragment() {
@@ -35,6 +37,23 @@ class CrimeListFragment : Fragment() {
         get() = checkNotNull(_binding) {
             "Cannot access binding because it is null. Is the view visible?"
         }
+
+    // implements of menu interface - this object PROVIDE creating menu
+    val menuProvider = object : MenuProvider{
+        override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+            menuInflater.inflate(R.menu.fragment_crime_list, menu)
+        }
+
+        override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+            when(menuItem.itemId){
+                R.id.new_crime -> {
+                    showNewCrime()
+                    return true
+                }
+            }
+            return false
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,23 +80,6 @@ class CrimeListFragment : Fragment() {
         // link on the activity like a host - for more shorter call
         val menuHost: MenuHost = requireActivity()
 
-        // implements of menu interface - this object PROVIDE creating menu
-        val menuProvider = object : MenuProvider{
-            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                menuInflater.inflate(R.menu.fragment_crime_list, menu)
-            }
-
-            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                when(menuItem.itemId){
-                    R.id.new_crime -> {
-                        Toast.makeText(requireContext(), "Add", Toast.LENGTH_SHORT).show()
-                        return true
-                    }
-                }
-                return false
-            }
-        }
-
         // let the activity handle the menu in this fragment
         // -- viewLifecycleOwner controls the creation and destruction menu for this fragment.
         menuHost.addMenuProvider(menuProvider, viewLifecycleOwner)
@@ -98,6 +100,27 @@ class CrimeListFragment : Fragment() {
             }
         }
     }
+
+    private fun showNewCrime(){
+        viewLifecycleOwner.lifecycleScope.launch{
+            // default empty new crime
+            val newCrime = Crime(
+                id = UUID.randomUUID(),
+                title = "",
+                date = Date(),
+                isSolved = false
+            )
+
+            // add this empty crime to database
+            crimeListViewModel.addCrime(newCrime)
+
+            // move to fragment when we can edit crime
+            findNavController().navigate(
+                CrimeListFragmentDirections.showCrimeDetail(newCrime.id)
+            )
+        }
+    }
+
     override fun onStart() {
         super.onStart()
         Log.d(TAG, "onStart")
