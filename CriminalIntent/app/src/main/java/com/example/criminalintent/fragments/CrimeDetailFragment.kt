@@ -1,8 +1,11 @@
 package com.example.criminalintent.fragments
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.provider.CalendarContract.CalendarEntity
+import android.provider.Settings.System.DATE_FORMAT
+import android.provider.Settings.System.TIME_12_24
+import android.text.format.DateFormat
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
@@ -10,7 +13,6 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
@@ -21,7 +23,6 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.lifecycle.viewModelScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.example.criminalintent.R
@@ -30,11 +31,6 @@ import com.example.criminalintent.databinding.FragmentCrimeBinding
 import com.example.criminalintent.viewModel.CrimeDetailViewModel
 import com.example.criminalintent.viewModel.CrimeDetailViewModelFactory
 import com.google.android.material.snackbar.Snackbar
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.util.*
 
@@ -198,6 +194,11 @@ class CrimeDetailFragment : Fragment() {
             createDateTime(currentCrime?.date ?: Date(), newTime)
         }
 
+/*        binding.crimeReport.setOnClickListener {
+            //Log.d("CrimeDetailFragment_TAG", currentCrime?.let{getCrimeReport(it)}.toString() ?: "nothing")
+            Log.d("CrimeDetailFragment_TAG", currentCrime?.date.toString() ?: "nothing")
+        }*/
+
     }
 
     // Function that check (according with DB), do these UI fields need change or not --> and update them
@@ -218,6 +219,25 @@ class CrimeDetailFragment : Fragment() {
             // button that change the time of crime
             bChangeTime.setOnClickListener {
                 findNavController().navigate(CrimeDetailFragmentDirections.selectTime(crime.date))
+            }
+
+            // button that was create implicit intent, call another app and send message to it
+            crimeReport.setOnClickListener {
+                val reportIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, getCrimeReport(crime))
+                    putExtra(
+                        Intent.EXTRA_SUBJECT,
+                        getString(R.string.crime_report_subject)
+                    )
+                }
+                //creating chooser
+                val chooserIntent = Intent.createChooser(
+                    reportIntent,
+                    // title that will be shown
+                    getString(R.string.send_report)
+                )
+                startActivity(chooserIntent)
             }
         }
     }
@@ -242,6 +262,26 @@ class CrimeDetailFragment : Fragment() {
         viewModelDetails.updateCrime {
             it.copy(date = dateComplete.time)
         }
+    }
+
+    private fun getCrimeReport(crime: Crime) : String {
+        val solvedString = if(crime.isSolved){
+            getString(R.string.crime_report_solved)
+        }
+        else{
+            getString(R.string.crime_report_unsolved)
+        }
+
+        val dateString = DateFormat.format(TIME_12_24, crime.date).toString()
+
+        val suspectText = if (crime.suspect.isBlank()){
+            getString(R.string.crime_report_no_suspect)
+        }
+        else{
+            getString(R.string.crime_report_suspect, crime.suspect)
+        }
+
+        return getString(R.string.crime_report, crime.title, dateString, solvedString, suspectText)
     }
 
     override fun onStart() {
