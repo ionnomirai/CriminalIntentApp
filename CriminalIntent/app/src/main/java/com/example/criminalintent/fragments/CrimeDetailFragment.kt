@@ -1,8 +1,10 @@
 package com.example.criminalintent.fragments
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.ContactsContract
 import android.provider.Settings.System.DATE_FORMAT
 import android.provider.Settings.System.TIME_12_24
 import android.text.format.DateFormat
@@ -14,6 +16,7 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.core.widget.doOnTextChanged
@@ -32,6 +35,7 @@ import com.example.criminalintent.viewModel.CrimeDetailViewModel
 import com.example.criminalintent.viewModel.CrimeDetailViewModelFactory
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
+import java.io.Closeable
 import java.util.*
 
 private const val TAG = "CrimeDetailFragment_TAG"
@@ -75,6 +79,13 @@ class CrimeDetailFragment : Fragment() {
         }
     }
 
+    // object that get some information (according contract) from Contacts App in this case
+    // We get only uri, than we need manually parse it in readable dataa
+    private val selectSuspect = registerForActivityResult(ActivityResultContracts.PickContact()){
+        uri: Uri? ->
+        uri?.let { parseContactSelection(it) }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate")
@@ -106,8 +117,6 @@ class CrimeDetailFragment : Fragment() {
         menuHost.addMenuProvider(menuProvider, viewLifecycleOwner)
 
         binding.apply {
-
-
             // callback responsible for the back button behavior
             val callbackAction2 = object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
@@ -141,6 +150,14 @@ class CrimeDetailFragment : Fragment() {
                 viewModelDetails.updateCrime { oldCrime ->
                     oldCrime.copy(isSolved = isChecked) // it is equals like "return oldCrime.copy..."
                 }
+            }
+
+            // button crimeSuspect
+            // User will move to Contacts App --> pick one person from a list --> and will come back here
+            crimeSuspect.setOnClickListener {
+                /* as we launch a Contacts App, it is not demant any input, so we can fill input
+                * field like 'null'*/
+                selectSuspect.launch(null)
             }
         }
 
@@ -193,12 +210,6 @@ class CrimeDetailFragment : Fragment() {
 
             createDateTime(currentCrime?.date ?: Date(), newTime)
         }
-
-/*        binding.crimeReport.setOnClickListener {
-            //Log.d("CrimeDetailFragment_TAG", currentCrime?.let{getCrimeReport(it)}.toString() ?: "nothing")
-            Log.d("CrimeDetailFragment_TAG", currentCrime?.date.toString() ?: "nothing")
-        }*/
-
     }
 
     // Function that check (according with DB), do these UI fields need change or not --> and update them
@@ -238,6 +249,11 @@ class CrimeDetailFragment : Fragment() {
                     getString(R.string.send_report)
                 )
                 startActivity(chooserIntent)
+            }
+
+            // if there is no suspect, than show default title in the button text place
+            crimeSuspect.text = crime.suspect.ifEmpty {
+                getString(R.string.crime_suspect_text)
             }
         }
     }
@@ -282,6 +298,52 @@ class CrimeDetailFragment : Fragment() {
         }
 
         return getString(R.string.crime_report, crime.title, dateString, solvedString, suspectText)
+    }
+
+    private fun parseContactSelection(contactUri: Uri){
+        // Here we only create an array with one value inside - display_name
+        val queryFields = arrayOf(ContactsContract.Contacts.DISPLAY_NAME)
+
+        /* this statement do: ContentResolver sends request (with Uri) to contentProvider,
+        * and receive back Cursor object, that contain "table" with information. In this case,
+        * we receive a table with only one column (because in second parameter we put the
+        * querryFields, that contain array with only one name of column).
+        *
+        *   here in query():
+        * - uri - contactUri - address resource (data) what we need
+        *
+        * - projection - queryFields - it is a list of which columns to return. Passing null
+        *      will return all columns, which is inefficient.
+        *
+        * - selection -A filter declaring which rows to return, formatted as an SQL WHERE
+        *      clause (excluding the WHERE itself). Passing null will return all rows
+        *       for the given URI.
+        *
+        * - selectionArgs - ??? End on 524
+        *
+        * - sortOrder - How to order the rows, formatted as an SQL ORDER BY clause
+        *       (excluding the ORDER BY itself). Passing null will use the default
+        *       sort order, which may be unordered.*/
+        val  queryCursor = requireActivity().contentResolver
+            .query(contactUri, queryFields, null, null, null)
+
+        /*! we can use "use", because Cursor implement Closeable Interface
+        * ! "use" can safety close the resource
+        * */
+        queryCursor?.use {cursor ->
+            if(cursor.moveToFirst()){
+                //delete this line after all
+                val colNames = cursor.columnNames
+                /*pull the data from this line on "0 position" column*/
+                val suspect = cursor.getString(0)
+                viewModelDetails.updateCrime {oldCrime ->
+                    oldCrime.copy(suspect = suspect)
+                }
+                for (i in colNames){
+                    Log.d(TAG, "$${i}")
+                }
+            }
+        }
     }
 
     override fun onStart() {
