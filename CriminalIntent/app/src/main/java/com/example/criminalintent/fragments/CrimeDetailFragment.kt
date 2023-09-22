@@ -1,6 +1,8 @@
 package com.example.criminalintent.fragments
 
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -159,6 +161,14 @@ class CrimeDetailFragment : Fragment() {
                 * field like 'null'*/
                 selectSuspect.launch(null)
             }
+
+            // Checking existing Contacts (that match with our queries) applications
+            // If it exist match, then instance of intent will be created. It is need only to check
+            val selectSuspectIntent = selectSuspect.contract.createIntent(
+                requireContext(),
+                null
+            )
+            crimeSuspect.isEnabled = canResolveIntent(selectSuspectIntent)
         }
 
         // updating data on the screen
@@ -300,6 +310,8 @@ class CrimeDetailFragment : Fragment() {
         return getString(R.string.crime_report, crime.title, dateString, solvedString, suspectText)
     }
 
+    //get Uri, transform information get information on this Uri, and use this information
+    //to update button's "text" and info in state flow.
     private fun parseContactSelection(contactUri: Uri){
         // Here we only create an array with one value inside - display_name
         val queryFields = arrayOf(ContactsContract.Contacts.DISPLAY_NAME)
@@ -344,6 +356,18 @@ class CrimeDetailFragment : Fragment() {
                 }
             }
         }
+    }
+
+    /*Check: does Intent have any target in other apps? Are these apps exist?*/
+    private fun canResolveIntent(intent: Intent): Boolean{
+        //PackageManager give us an iformation about app in our phone
+        val packageManager: PackageManager = requireActivity().packageManager
+        val resolvedActivity: ResolveInfo? =
+            packageManager.resolveActivity(
+                intent,
+                PackageManager.MATCH_DEFAULT_ONLY
+            )
+        return resolvedActivity != null
     }
 
     override fun onStart() {
