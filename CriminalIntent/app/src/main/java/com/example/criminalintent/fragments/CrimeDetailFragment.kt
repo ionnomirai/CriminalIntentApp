@@ -38,6 +38,7 @@ import com.example.criminalintent.viewModel.CrimeDetailViewModelFactory
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
 import java.io.Closeable
+import java.io.File
 import java.util.*
 
 private const val TAG = "CrimeDetailFragment_TAG"
@@ -88,6 +89,14 @@ class CrimeDetailFragment : Fragment() {
         uri?.let { parseContactSelection(it) }
     }
 
+    // object for taking a photo
+    private val takePhoto = registerForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ){
+        didTakePhoto: Boolean ->
+        //Handle the result
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate")
@@ -117,7 +126,7 @@ class CrimeDetailFragment : Fragment() {
         // added action in app bar
         val menuHost : MenuHost = requireActivity()
         menuHost.addMenuProvider(menuProvider, viewLifecycleOwner)
-
+        Log.d(TAG, "Crime-->namePhoto: ${currentCrime?.photoFileName}")
         binding.apply {
             // callback responsible for the back button behavior
             val callbackAction2 = object : OnBackPressedCallback(true) {
@@ -370,6 +379,11 @@ class CrimeDetailFragment : Fragment() {
         return resolvedActivity != null
     }
 
+    private fun doLaunchCamera(){
+        val photoName = "IMG_${Date()}.JPG"
+        //first parameter means: app's internal storage
+        val photoFile = File(requireContext().applicationContext.filesDir, photoName)
+    }
     override fun onStart() {
         super.onStart()
         Log.d(TAG, "onStart")
