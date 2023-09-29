@@ -1,5 +1,6 @@
 package com.example.criminalintent.fragments
 
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
@@ -18,7 +19,9 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.core.widget.doOnTextChanged
@@ -51,7 +54,7 @@ class CrimeDetailFragment : Fragment() {
 
     private var _binding: FragmentCrimeBinding? = null //instance of the layout
 
-    private var currentCrime : Crime? = null
+    private var currentCrime: Crime? = null
 
     //checkNotNull(value) if value equals null -> than throe exception, otherwise return value
     private val binding
@@ -63,20 +66,21 @@ class CrimeDetailFragment : Fragment() {
         CrimeDetailViewModelFactory(argsMy.crimeId)
     }
 
-    private val menuProvider = object : MenuProvider{
+    private val menuProvider = object : MenuProvider {
         override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
             menuInflater.inflate(R.menu.fragment_crime_edit, menu)
         }
 
         override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-            when(menuItem.itemId){
+            when (menuItem.itemId) {
                 R.id.icDelete -> {
-                    viewLifecycleOwner.lifecycleScope.launch{
+                    viewLifecycleOwner.lifecycleScope.launch {
                         currentCrime?.let { viewModelDetails.deleteCrime(it) }
                         findNavController().navigate(CrimeDetailFragmentDirections.actionCrimeDetailFragmentToNavGraph())
                     }
                     return true
                 }
+
                 else -> return false
             }
         }
@@ -84,17 +88,24 @@ class CrimeDetailFragment : Fragment() {
 
     // object that get some information (according contract) from Contacts App in this case
     // We get only uri, than we need manually parse it in readable dataa
-    private val selectSuspect = registerForActivityResult(ActivityResultContracts.PickContact()){
-        uri: Uri? ->
-        uri?.let { parseContactSelection(it) }
-    }
+    private val selectSuspect =
+        registerForActivityResult(ActivityResultContracts.PickContact()) { uri: Uri? ->
+            uri?.let { parseContactSelection(it) }
+        }
+
+    var photoName: String? = null
 
     // object for taking a photo
     private val takePhoto = registerForActivityResult(
         ActivityResultContracts.TakePicture()
-    ){
-        didTakePhoto: Boolean ->
-        //Handle the result
+    ) { didTakePhoto: Boolean ->
+        if (didTakePhoto && photoName != null) {
+            viewModelDetails.updateCrime { oldCrime ->
+                oldCrime.copy(photoFileName = photoName)
+            }
+        } else {
+            Log.d(TAG, "PICTURE WAS NOT SAVED")
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -121,10 +132,8 @@ class CrimeDetailFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         Log.d(TAG, "onViewCreated")
 
-        //Log.d(TAG, "${viewModelDetails.crime.value?.id}")
-
         // added action in app bar
-        val menuHost : MenuHost = requireActivity()
+        val menuHost: MenuHost = requireActivity()
         menuHost.addMenuProvider(menuProvider, viewLifecycleOwner)
         Log.d(TAG, "Crime-->namePhoto: ${currentCrime?.photoFileName}")
         binding.apply {
@@ -147,7 +156,6 @@ class CrimeDetailFragment : Fragment() {
                 viewLifecycleOwner,
                 callbackAction2
             )
-
 
             /*it is filling the title field in crime object, at the same time that the user enters
             this information into EditText* field*/
@@ -178,6 +186,17 @@ class CrimeDetailFragment : Fragment() {
                 null
             )
             crimeSuspect.isEnabled = canResolveIntent(selectSuspectIntent)
+
+            // Checking existing Camera (that match with our queries) applications
+            // If it exist match, then instance of intent will be created. It is need only to check
+            val cameraAppExist = takePhoto.contract.createIntent(
+                requireContext(),
+                Uri.parse("")
+            )
+            crimeSuspect.isEnabled = canResolveIntent(cameraAppExist)
+
+            // set camera launch button
+            crimeCamera.setOnClickListener { doLaunchCamera() }
         }
 
         // updating data on the screen
@@ -186,14 +205,13 @@ class CrimeDetailFragment : Fragment() {
                 viewModelDetails.crime.collect { crime ->
                     Log.d(TAG, "Crime changed")
                     crime?.let {
-                        currentCrime = it // save temp Crime for sync between Date and Time change. Look at fun createDateTime
+                        currentCrime =
+                            it // save temp Crime for sync between Date and Time change. Look at fun createDateTime
                         updateUI(it) // pass current Crime to update UI
                     }
                 }
             }
         }
-
-        Log.d(TAG, "arguments from another fragments: ${argsMy.crimeId}")
 
         // get date from fragment
         setFragmentResultListener(DatePickerFragment.REQUEST_KEY_DATE) { _, bundle ->
@@ -229,6 +247,9 @@ class CrimeDetailFragment : Fragment() {
 
             createDateTime(currentCrime?.date ?: Date(), newTime)
         }
+
+        /*Show in Log, what the files contain in "files/" and "files/myImages/"*/
+        showDirFiles()
     }
 
     // Function that check (according with DB), do these UI fields need change or not --> and update them
@@ -281,7 +302,7 @@ class CrimeDetailFragment : Fragment() {
     // crime - it is current crime
     // date - it is changed date from another fragment
     // This function combine date and time, then update the crime`s date
-    private fun createDateTime(date: Date, time: Calendar){
+    private fun createDateTime(date: Date, time: Calendar) {
         val dateComplete = Calendar.getInstance()
         val tempDate = Calendar.getInstance()
         tempDate.time = date
@@ -299,20 +320,18 @@ class CrimeDetailFragment : Fragment() {
         }
     }
 
-    private fun getCrimeReport(crime: Crime) : String {
-        val solvedString = if(crime.isSolved){
+    private fun getCrimeReport(crime: Crime): String {
+        val solvedString = if (crime.isSolved) {
             getString(R.string.crime_report_solved)
-        }
-        else{
+        } else {
             getString(R.string.crime_report_unsolved)
         }
 
         val dateString = DateFormat.format(TIME_12_24, crime.date).toString()
 
-        val suspectText = if (crime.suspect.isBlank()){
+        val suspectText = if (crime.suspect.isBlank()) {
             getString(R.string.crime_report_no_suspect)
-        }
-        else{
+        } else {
             getString(R.string.crime_report_suspect, crime.suspect)
         }
 
@@ -321,7 +340,7 @@ class CrimeDetailFragment : Fragment() {
 
     //get Uri, transform information get information on this Uri, and use this information
     //to update button's "text" and info in state flow.
-    private fun parseContactSelection(contactUri: Uri){
+    private fun parseContactSelection(contactUri: Uri) {
         // Here we only create an array with one value inside - display_name
         val queryFields = arrayOf(ContactsContract.Contacts.DISPLAY_NAME)
 
@@ -345,22 +364,22 @@ class CrimeDetailFragment : Fragment() {
         * - sortOrder - How to order the rows, formatted as an SQL ORDER BY clause
         *       (excluding the ORDER BY itself). Passing null will use the default
         *       sort order, which may be unordered.*/
-        val  queryCursor = requireActivity().contentResolver
+        val queryCursor = requireActivity().contentResolver
             .query(contactUri, queryFields, null, null, null)
 
         /*! we can use "use", because Cursor implement Closeable Interface
         * ! "use" can safety close the resource
         * */
-        queryCursor?.use {cursor ->
-            if(cursor.moveToFirst()){
+        queryCursor?.use { cursor ->
+            if (cursor.moveToFirst()) {
                 //delete this line after all
                 val colNames = cursor.columnNames
                 /*pull the data from this line on "0 position" column*/
                 val suspect = cursor.getString(0)
-                viewModelDetails.updateCrime {oldCrime ->
+                viewModelDetails.updateCrime { oldCrime ->
                     oldCrime.copy(suspect = suspect)
                 }
-                for (i in colNames){
+                for (i in colNames) {
                     Log.d(TAG, "$${i}")
                 }
             }
@@ -368,7 +387,7 @@ class CrimeDetailFragment : Fragment() {
     }
 
     /*Check: does Intent have any target in other apps? Are these apps exist?*/
-    private fun canResolveIntent(intent: Intent): Boolean{
+    private fun canResolveIntent(intent: Intent): Boolean {
         //PackageManager give us an iformation about app in our phone
         val packageManager: PackageManager = requireActivity().packageManager
         val resolvedActivity: ResolveInfo? =
@@ -379,11 +398,39 @@ class CrimeDetailFragment : Fragment() {
         return resolvedActivity != null
     }
 
-    private fun doLaunchCamera(){
-        val photoName = "IMG_${Date()}.JPG"
-        //first parameter means: app's internal storage
-        val photoFile = File(requireContext().applicationContext.filesDir, photoName)
+    private fun doLaunchCamera() {
+        //name of file where will be saved a photo.
+        photoName = "IMG_${Date()}.JPG"
+
+        //create directory, when we will save photo
+        val fileDirectory = File(requireContext().applicationContext.filesDir, "myImages")
+        fileDirectory.mkdir()
+
+        /* Creating a "raw" file. It is empty now.
+        * - first parameter means: app's internal storage*/
+        val photoFile = File(fileDirectory, photoName)
+        /* Creating a Uri for "raw" file that we created just below*/
+        val photoUri = FileProvider.getUriForFile(
+            requireContext(),
+            "com.example.criminalintent.fileprovider",
+            photoFile
+        )
+        takePhoto.launch(photoUri)
     }
+
+    /*Show in Log, what the files contain in "files/" and "files/myImages/"*/
+    private fun showDirFiles() {
+        val test = requireActivity().applicationContext.filesDir.list()
+        for (i in test) {
+            Log.d(TAG, "fileDir: $i")
+        }
+
+        val test2 = File(requireContext().applicationContext.filesDir, "myImages")
+        for (i in test2.list()) {
+            Log.d(TAG, "fileDir-->myImages: $i")
+        }
+    }
+
     override fun onStart() {
         super.onStart()
         Log.d(TAG, "onStart")
