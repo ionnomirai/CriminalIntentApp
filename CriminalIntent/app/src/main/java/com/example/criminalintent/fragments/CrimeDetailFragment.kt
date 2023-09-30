@@ -24,6 +24,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
+import androidx.core.view.doOnLayout
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
@@ -36,6 +37,7 @@ import androidx.navigation.fragment.navArgs
 import com.example.criminalintent.R
 import com.example.criminalintent.database.Crime
 import com.example.criminalintent.databinding.FragmentCrimeBinding
+import com.example.criminalintent.utils.getScaledBitmap
 import com.example.criminalintent.viewModel.CrimeDetailViewModel
 import com.example.criminalintent.viewModel.CrimeDetailViewModelFactory
 import com.google.android.material.snackbar.Snackbar
@@ -258,6 +260,7 @@ class CrimeDetailFragment : Fragment() {
             if (etCrimeTitle.text.toString() != crime.title) {
                 etCrimeTitle.setText(crime.title)
             }
+
             bCrimeDate.text = crime.date.toString()
             cbCrimeSolved.isChecked = crime.isSolved
 
@@ -295,6 +298,8 @@ class CrimeDetailFragment : Fragment() {
             crimeSuspect.text = crime.suspect.ifEmpty {
                 getString(R.string.crime_suspect_text)
             }
+
+            updatePhoto(crime.photoFileName)
         }
     }
 
@@ -402,13 +407,14 @@ class CrimeDetailFragment : Fragment() {
         //name of file where will be saved a photo.
         photoName = "IMG_${Date()}.JPG"
 
+        //create varaible for file (directory), when we will save photo == path
+        val imageFileDirectory = File(requireContext().applicationContext.filesDir, "myImages")
         //create directory, when we will save photo
-        val fileDirectory = File(requireContext().applicationContext.filesDir, "myImages")
-        fileDirectory.mkdir()
+        imageFileDirectory.mkdir()
 
         /* Creating a "raw" file. It is empty now.
         * - first parameter means: app's internal storage*/
-        val photoFile = File(fileDirectory, photoName)
+        val photoFile = File(imageFileDirectory, photoName)
         /* Creating a Uri for "raw" file that we created just below*/
         val photoUri = FileProvider.getUriForFile(
             requireContext(),
@@ -428,6 +434,39 @@ class CrimeDetailFragment : Fragment() {
         val test2 = File(requireContext().applicationContext.filesDir, "myImages")
         for (i in test2.list()) {
             Log.d(TAG, "fileDir-->myImages: $i")
+        }
+    }
+
+    private fun updatePhoto(photoFileName: String?) {
+        /*  We will update the information about crime every time when it changes. BUT
+            If the tag property and the crime’s photo filename match, then you know the
+           ImageView is already displaying the correct photo.*/
+        if (binding.crimePhoto.tag != photoFileName) {
+            val pathDir = File(requireContext().applicationContext.filesDir, "myImages")
+            val photoFile = photoFileName?.let {
+                File(pathDir, it)
+            }
+
+            // below it is all about crimePhoto (imageView)
+            binding.crimePhoto.apply {
+                if (photoFile?.exists() == true) {
+                    /*crimePhoto.doOnLayout - actions inside will be performed only when this view is loaded*/
+                    doOnLayout { measureView ->
+                        val scaledBitmap = getScaledBitmap(
+                            photoFile.path,    //"/files/myImage/image_name"
+                            measureView.width, // crimePhoto (imageView) --> width
+                            measureView.height // crimePhoto (imageView) --> height
+                        )
+                        // imageView has a special function to set an image for Bitmap
+                        setImageBitmap(scaledBitmap)
+                        tag = photoFileName
+                    }
+                }
+                else{
+                    setImageBitmap(null)
+                    tag = null
+                }
+            }
         }
     }
 
