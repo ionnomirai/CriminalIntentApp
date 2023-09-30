@@ -3,6 +3,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.criminalintent">
 
+    <uses-feature android:name="android.hardware.camera"
+        android:required="false"/>
+
     <application
         android:name=".CriminalIntentApplication"
         android:allowBackup="true"
