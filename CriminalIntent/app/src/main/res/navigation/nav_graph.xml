@@ -31,6 +31,9 @@
         <action
             android:id="@+id/select_time"
             app:destination="@id/timePickerFragment" />
+        <action
+            android:id="@+id/show_photo"
+            app:destination="@id/photoDisplayFragment" />
     </fragment>
     <dialog
         android:id="@+id/datePickerFragment"
@@ -47,5 +50,16 @@
         <argument
             android:name="crimeTime"
             app:argType="java.util.Date" />
+    </dialog>
+    <dialog
+        android:id="@+id/photoDisplayFragment"
+        android:name="com.example.criminalintent.fragments.PhotoDisplayFragment"
+        android:label="PhotoDisplayFragment" >
+        <argument
+            android:name="photo_name"
+            app:argType="string" />
+        <argument
+            android:name="pathDir"
+            app:argType="string" />
     </dialog>
 </navigation>

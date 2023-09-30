@@ -18,6 +18,7 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -300,6 +301,18 @@ class CrimeDetailFragment : Fragment() {
             }
 
             updatePhoto(crime.photoFileName)
+
+            // show big photo in center of display
+            crimePhoto.setOnClickListener {
+                crime.photoFileName?.let { photoName ->
+                    findNavController().navigate(
+                        CrimeDetailFragmentDirections.showPhoto(
+                            photoName,
+                            File(requireContext().applicationContext.filesDir, "myImages").path
+                        )
+                    )
+                }
+            }
         }
     }
 
